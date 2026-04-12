@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from .login import verificar_token
+from .login import verificar_token, verificar_admin
 from sqlalchemy.orm import Session
 from db.models.apuntes import Apunte
 from db.models.usuario import Usuario
@@ -11,6 +11,11 @@ from db.cliente import get_db
 router=APIRouter()
 
 @router.get("/materias/apuntes", response_model=list[Apunte_response])
+async def all_apuntes(user:Usuario=Depends(verificar_admin), db:Session=Depends(get_db)):
+    lista_apuntes=db.query(Apunte).all()
+    return lista_apuntes
+
+@router.get("/mis_materias/mis_apuntes", response_model=list[Apunte_response])
 async def apuntes_all(user:Usuario=Depends(verificar_token), db:Session=Depends(get_db)):
     lista_materias=db.query(Materia).filter(Materia.id_usuario==user.id).all()
 
@@ -26,19 +31,18 @@ async def apuntes_all(user:Usuario=Depends(verificar_token), db:Session=Depends(
     
     return lista_apuntes
 
-@router.get("/materias/{id}/apuntes", response_model=list[Apunte_response])
+@router.get("/mis_materias/{id}/apuntes", response_model=list[Apunte_response])
 async def apuntes_por_id(id:str, user:Usuario=Depends(verificar_token), db:Session=Depends(get_db)):
     buscar_materia=db.query(Materia).filter(Materia.id==id).first()
+
+    if buscar_materia is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="la materia no se encuentra registrada")
     
     if buscar_materia.id_usuario != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="la materia no se encuentra registrada")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="no autorisado para ver los apuntes de esta materia")
     lista_apuntes=db.query(Apunte).filter(Apunte.id_materia==id).all()
-    lista=[]
-    for x in lista_apuntes:
-        respuesta_apunte=Apunte_response(id=x.id, titulo=x.titulo, id_materia=x.id_materia, descripcion=x.descripcion, archivo_url=x.archivo_url, fecha_creacion=x.fecha_creacion)
-        lista.append(respuesta_apunte)
-
-    return lista
+    
+    return lista_apuntes
 
 
 @router.post("/materias/{idMateria}/nuevo_apunte")

@@ -30,6 +30,12 @@ def verificar_token(token:str=Depends(oauth), db:Session=Depends(get_db)):
     if buscar_usuario!=None:
         return buscar_usuario
 
+def verificar_admin(user:Usuario=Depends(verificar_token)):
+    if user.rol != "admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="el usuario no tiene permisos de administrador")
+    else:
+        return user
+    
 @router.post("/login")
 async def login(form:OAuth2PasswordRequestForm=Depends(), db:Session=Depends(get_db)):
     usuario=db.query(Usuario).filter(Usuario.nombre==form.username).first()

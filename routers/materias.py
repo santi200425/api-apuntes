@@ -2,13 +2,26 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from db.models.materia import Materia
 from db.schemas.materia import Materia_nueva, Materia_response, Materia_update
-from .login import verificar_token
+from .login import verificar_token, verificar_admin
 from db.cliente import get_db
 from db.models.usuario import Usuario
 
 router=APIRouter()
 
+@router.get("/materias/{id}", response_model=Materia_response)
+async def materia_por_id(id:str, user:Usuario=Depends(verificar_admin), db:Session=Depends(get_db)):
+    buscar_materia=db.query(Materia).filter(Materia.id==id).first()
+    if buscar_materia is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="la materia no se encuentra registrada")
+    
+    return buscar_materia
+
 @router.get("/materias", response_model=list[Materia_response])
+async def all_materias(user:Usuario=Depends(verificar_admin), db:Session=Depends(get_db)):
+    lista_materias=db.query(Materia).all()
+    return lista_materias
+
+@router.get("/mis_materias", response_model=list[Materia_response])
 async def mis_materias(user:Usuario=Depends(verificar_token),db:Session=Depends(get_db)):
     materias=db.query(Materia).filter(Materia.id_usuario==user.id).all()
 
@@ -45,8 +58,8 @@ async def act_materia(id:str, materia:Materia_update, db:Session=Depends(get_db)
     db.refresh(materia_encontrada)
     return {"detail":"materia actualizada"}
 
-@router.delete("/eliminar_materia/{id}")
-async def delete_materia(id:str, db:Session=Depends(get_db), user:Usuario=Depends(verificar_token)):
+@router.delete("/eliminar_mi_materia/{id}")
+async def delete_mi_materia(id:str, db:Session=Depends(get_db), user:Usuario=Depends(verificar_token)):
     lista_materias=db.query(Materia).filter(Materia.id_usuario==user.id).all()
 
     for materia in lista_materias:
@@ -56,3 +69,13 @@ async def delete_materia(id:str, db:Session=Depends(get_db), user:Usuario=Depend
             return {"detail":"materia borrada"}
         
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="materia no encontrada")
+
+@router.delete("/eliminar_materia/{id}")
+async def delete_materia(id:str, db:Session=Depends(get_db), user:Usuario=Depends(verificar_admin)):
+    buscar_materia=db.query(Materia).filter(Materia.id==id).first()
+    if buscar_materia is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="materia no encontrada")
+    
+    db.delete(buscar_materia)
+    db.commit()
+    return {"detail":"materia borrada"}
