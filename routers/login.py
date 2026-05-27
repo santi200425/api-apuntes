@@ -6,13 +6,17 @@ from db.models.usuario import Usuario
 from db.cliente import get_db
 from passlib.context import CryptContext
 from jose import jwt, JWTError
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 crypt=CryptContext(schemes=["bcrypt"])
 router=APIRouter()
 oauth=OAuth2PasswordBearer(tokenUrl="login")
 DURACION_ACCES_TOKEN=5
 ALGORITMO="HS256"
-SECRET="mi primer proyecto"
+SECRET=os.getenv("SECRET_KEY")
 
 
 def verificar_token(token:str=Depends(oauth), db:Session=Depends(get_db)):

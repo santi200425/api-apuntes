@@ -4,8 +4,14 @@ from db.cliente import get_db, SessionLocal
 from sqlalchemy.orm import Session
 from db.models.usuario import Usuario
 from passlib.context import CryptContext
+from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app=FastAPI()
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 crypt=CryptContext(schemes=["bcrypt"])
 
 app.include_router(login.router)
@@ -21,7 +27,7 @@ def crear_primer_admin():
         admin=Usuario(
             nombre="ana",
             email="ana@gmail.com",
-            contraseña=crypt.hash("admin123"),
+            contraseña=crypt.hash(os.getenv("ADMIN_PASSWORD")),
             rol="admin"
         )
 

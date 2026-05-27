@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from .login import verificar_token, verificar_admin
 from sqlalchemy.orm import Session
 from db.models.apuntes import Apunte
@@ -6,7 +6,8 @@ from db.models.usuario import Usuario
 from db.models.materia import Materia
 from db.schemas.apunte import Apunte_nuevo, Apunte_response, Apunte_update
 from db.cliente import get_db
-
+import shutil
+import uuid
 
 router=APIRouter()
 
@@ -97,3 +98,16 @@ async def borrar_apunte(id:str, user:Usuario=Depends(verificar_token), db:Sessio
     db.delete(buscar_apunte)
     db.commit()
     return {"detail":"apunte borrado"}
+
+@router.post("/upload")
+async def subir_archivo(file:UploadFile=File(...)):
+    extension=file.filename.split(".")[-1]
+    nombre_unico=f"{uuid.uuid4()}.{extension}"
+    ruta=f"uploads/{nombre_unico}"
+    with open(ruta, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return {
+        "filename":nombre_unico,
+        "url":f"/uploads/{nombre_unico}"
+    }
